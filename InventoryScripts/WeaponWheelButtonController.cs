@@ -1,11 +1,10 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.EventSystems;
 
-public class WeaponWheelButtonController : MonoBehaviour, IPointerClickHandler
+// IPointerEnterHandler ve IPointerExitHandler eklendi
+public class WeaponWheelButtonController : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
 {
     [Header("Item Properties")]
     public int ID;
@@ -17,50 +16,44 @@ public class WeaponWheelButtonController : MonoBehaviour, IPointerClickHandler
     public TextMeshProUGUI itemText;
     public Image selectedItem;
 
-    // Bu referanslarý ve metotlarý siliyoruz
-    // public MouseLook mouseLook;
-    // public RaycastProcess raycastProcess;
-    // public void Selected()
-    // public void Deselected()
-
     private Animator anim;
     public bool selected = false;
+    private WeaponWheelController wheelController;
 
     void Start()
     {
         anim = GetComponent<Animator>();
-        if (anim == null)
-        {
-            Debug.LogError("Animator bileþeni eksik: " + gameObject.name);
-        }
-        if (itemText == null)
-        {
-            Debug.LogError("itemText atanmamýþ: " + gameObject.name);
-        }
-        if (selectedItem == null)
-        {
-            Debug.LogError("selectedItem atanmamýþ: " + gameObject.name);
-        }
+        wheelController = GetComponentInParent<WeaponWheelController>();
+        
+        if (anim == null) Debug.LogWarning($"Animator eksik: {gameObject.name}");
+        if (itemText == null) Debug.LogWarning($"itemText eksik: {gameObject.name}");
+        if (selectedItem == null) Debug.LogWarning($"selectedItem eksik: {gameObject.name}");
     }
 
-    // Hover metotlarý kalabilir
-    public void HoverEnter()
+    // Unity Event'i: Fare objenin Ã¼zerine geldiÄŸinde otomatik Ã§alÄ±ÅŸÄ±r
+    public void OnPointerEnter(PointerEventData eventData)
     {
         if (anim != null) anim.SetBool("Hover", true);
         if (itemText != null) itemText.text = itemName;
-        Debug.Log("Fare üzerine geldi: " + itemName);
+        
+        // Tekerlek yÃ¶neticisine ismimizi gÃ¶nderiyoruz
+        if (wheelController != null) wheelController.SetHoverText(itemName);
     }
 
-    public void HoverExit()
+    // Unity Event'i: Fare objeden ayrÄ±ldÄ±ÄŸÄ±nda otomatik Ã§alÄ±ÅŸÄ±r
+    public void OnPointerExit(PointerEventData eventData)
     {
         if (anim != null) anim.SetBool("Hover", false);
         if (itemText != null) itemText.text = "";
-        Debug.Log("Fare üzerinden ayrýldý: " + itemName);
+        
+        if (wheelController != null) wheelController.SetHoverText("");
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        // Yalnýzca parent'a týklama olayýný bildirir
-        GetComponentInParent<WeaponWheelController>().EquipItem(slotID);
+        if (wheelController != null)
+        {
+            wheelController.EquipItem(slotID);
+        }
     }
 }
