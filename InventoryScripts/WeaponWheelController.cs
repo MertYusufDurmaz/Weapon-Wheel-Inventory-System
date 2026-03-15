@@ -1,139 +1,98 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro; 
+using TMPro;
 
 public class WeaponWheelController : MonoBehaviour
 {
+    [Header("Controls")]
+    public KeyCode toggleKey = KeyCode.T;
+
+    [Header("UI Components")]
     public Animator anim;
-    private bool weaponWheelSelected = false;
-
-    public static int weaponID;
-
-    [Header("Player Controllers")]
-    public PlayerControllerHandler playerControllerHandler;
-    public InventoryManager inventoryManager;
-    private CanvasManager canvasManager;
-
-    [Header("UI Slot References")]
     public Image[] slotIcons;
-
-    [Header("UI Text References")]
     public TextMeshProUGUI itemNameText;
+
+    [Header("Manager References")]
+    public PlayerControllerHandler playerControllerHandler;
+    
+    private bool weaponWheelSelected = false;
+    public static int weaponID = 0;
 
     void Start()
     {
-        canvasManager = FindObjectOfType<CanvasManager>();
-        if (canvasManager != null)
+        if (CanvasManager.Instance != null)
         {
-            canvasManager.RegisterCanvas("WeaponWheelCanvas", gameObject);
-            Debug.Log("WeaponWheelCanvas kaydedildi.");
-        }
-        weaponID = 0;
-        if (slotIcons.Length != 8)
-        {
-            Debug.LogWarning("slotIcons array must have 8 elements! Current size: " + slotIcons.Length);
-        }
-        UpdateUI();
-        if (itemNameText != null)
-        {
-            itemNameText.text = "";
+            CanvasManager.Instance.RegisterCanvas("WeaponWheelCanvas", gameObject);
         }
 
+        if (slotIcons.Length != 8)
+        {
+            Debug.LogWarning("WeaponWheelController: slotIcons dizisi 8 elemanlÄ± olmalÄ±dÄ±r!");
+        }
+
+        SetHoverText("");
         gameObject.SetActive(true);
         if (anim != null) anim.SetBool("OpenWeaponWheel", false);
     }
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.T))
+        if (Input.GetKeyDown(toggleKey))
         {
             ToggleWeaponWheel();
         }
-        if (weaponWheelSelected)
+    }
+
+    // Butonlar tarafÄ±ndan Ã§aÄŸrÄ±lacak yeni hafif metod
+    public void SetHoverText(string text)
+    {
+        if (itemNameText != null)
         {
-            HandleHover();
+            itemNameText.text = text;
         }
     }
 
     public void ToggleWeaponWheel()
     {
         weaponWheelSelected = !weaponWheelSelected;
+        
         if (weaponWheelSelected)
         {
-            CanvasManager.Instance.OpenCanvas("WeaponWheelCanvas");
+            if (CanvasManager.Instance != null) CanvasManager.Instance.OpenCanvas("WeaponWheelCanvas");
             UpdateUI();
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-            if (playerControllerHandler != null)
-            {
-                playerControllerHandler.DisablePlayerControls();
-            }
+            
+            if (playerControllerHandler != null) playerControllerHandler.DisablePlayerControls();
             if (anim != null) anim.SetBool("OpenWeaponWheel", true);
         }
         else
         {
             if (anim != null) anim.SetBool("OpenWeaponWheel", false);
-            if (itemNameText != null)
-            {
-                itemNameText.text = "";
-            }
-            if (canvasManager != null)
-            {
-                //canvasManager.SetPlayerState(true); // Crosshair'ý ve diðer kontrolleri geri aç
-                CanvasManager.Instance.CloseAllCanvases();
-                
-                
-            }
-        }
-    }
-
-    private void HandleHover()
-    {
-        int hoverSlotID = -1;
-        for (int i = 0; i < slotIcons.Length; i++)
-        {
-            if (RectTransformUtility.RectangleContainsScreenPoint(slotIcons[i].rectTransform, Input.mousePosition))
-            {
-                hoverSlotID = i;
-                break;
-            }
-        }
-        if (hoverSlotID != -1 && inventoryManager.itemSlots[hoverSlotID] != null)
-        {
-            itemNameText.text = inventoryManager.itemSlots[hoverSlotID].itemName;
-        }
-        else
-        {
-            itemNameText.text = "";
+            SetHoverText("");
+            
+            if (CanvasManager.Instance != null) CanvasManager.Instance.CloseAllCanvases();
         }
     }
 
     public void UpdateUI()
     {
-        if (InventoryManager.Instance == null)
-        {
-            Debug.LogError("InventoryManager.Instance is null!");
-            return;
-        }
+        if (InventoryManager.Instance == null) return;
+
         int maxLength = Mathf.Min(slotIcons.Length, InventoryManager.Instance.itemSlots.Length);
         for (int i = 0; i < maxLength; i++)
         {
-            if (slotIcons[i] == null)
+            if (slotIcons[i] == null) continue;
+
+            ItemData slotData = InventoryManager.Instance.itemSlots[i];
+
+            if (slotData != null && slotData.itemIcon != null)
             {
-                Debug.LogWarning($"slotIcons[{i}] is null, please assign the correct Image in the Inspector.");
-                continue;
-            }
-            if (InventoryManager.Instance.itemSlots[i] != null && InventoryManager.Instance.itemSlots[i].itemIcon != null)
-            {
-                slotIcons[i].sprite = InventoryManager.Instance.itemSlots[i].itemIcon;
-                slotIcons[i].color = new Color(1, 1, 1, 1);
+                slotIcons[i].sprite = slotData.itemIcon;
+                slotIcons[i].color = Color.white;
             }
             else
             {
                 slotIcons[i].sprite = null;
-                slotIcons[i].color = new Color(1, 1, 1, 0);
+                slotIcons[i].color = Color.clear; // (1, 1, 1, 0) yerine
             }
         }
     }
@@ -141,30 +100,27 @@ public class WeaponWheelController : MonoBehaviour
     public void EquipItem(int slotID)
     {
         ItemData item = InventoryManager.Instance.GetItemBySlot(slotID);
-        bool shouldCloseWheel = true; // Tekerleðin kapanýp kapanmayacaðýný kontrol eden bir bayrak ekleyin
-
+        bool shouldCloseWheel = true;
 
         if (item != null)
         {
             weaponID = slotID;
-            Debug.Log("Equipped item with ID " + weaponID + ": " + item.itemName);
-            CanvasManager.Instance.OpenCanvas("WeaponWheelCanvas");
-            // Eðer günlükse, tekerleði kapatma
+            if (CanvasManager.Instance != null) CanvasManager.Instance.OpenCanvas("WeaponWheelCanvas");
+
+            // Not: Ä°leride IEquippable arayÃ¼zÃ¼ ile bu kontrolÃ¼ kaldÄ±rmak daha iyi olur.
             if (item.instantiatedObject != null && item.instantiatedObject.GetComponent<Diary>() != null)
             {
                 shouldCloseWheel = false;
             }
 
-            inventoryManager.EquipItemFromInventory(item.itemPrefab);
+            InventoryManager.Instance.EquipItemFromInventory(item.itemPrefab);
         }
         else
         {
             weaponID = 0;
-            Debug.Log("Clicked on an empty slot, equipped Empty Hand.");
-            inventoryManager.EquipItemFromInventory(null);
+            InventoryManager.Instance.EquipItemFromInventory(null);
         }
 
-        // Sadece normal bir eþya donatýlmýþsa tekerleði kapatýn
         if (shouldCloseWheel)
         {
             ToggleWeaponWheel();
